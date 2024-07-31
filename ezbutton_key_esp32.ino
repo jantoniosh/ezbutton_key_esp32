@@ -1,133 +1,172 @@
-#include <EZButton.h>
+#include <ezButton.h>
 
-#define BTN_0_PIN 35
-#define BTN_0 0
-#define BTN_1_PIN 34
-#define BTN_1 1
-#define BTN_2_PIN 39
-#define BTN_2 2
-#define BTN_3_PIN 36
-#define BTN_3 3
+ezButton button0(35);
+ezButton button1(34);  
+ezButton button2(39);
+ezButton button3(36);
 
 const int led0 = 16;
 const int led1 = 17;
 const int led2 = 19;
 const int led3 = 23;
-const int ledT = 32;
 
-boolean buttonState0 = false;
-boolean buttonState1 = false;
-boolean buttonState2 = false;
-boolean buttonState3 = false;
+int nPressed = 0;
+int lastButton = 0;
+int nButton;
+int contador;
 
-void ReadButtons(bool *states, int num) {
-  states[BTN_0] = digitalRead(BTN_0_PIN);
-  states[BTN_1] = digitalRead(BTN_1_PIN);
-  states[BTN_2] = digitalRead(BTN_2_PIN);
-  states[BTN_3] = digitalRead(BTN_3_PIN);
-}
+unsigned long previousTimeLed1 = millis();
+long timeIntervalLed1 = 500;
+int ledState1 = LOW;
 
-EZButton _ezb(4, ReadButtons, 1000, 200);
+int buttons[] = {4, 4, 4, 4};
 
 void setup() {
-  //initialize pins
-  pinMode(BTN_0_PIN, INPUT);
+  Serial.begin(115200);
+  button0.setDebounceTime(50); // set debounce time to 50 milliseconds
+  button1.setDebounceTime(50); // set debounce time to 50 milliseconds
+  button2.setDebounceTime(50); // set debounce time to 50 milliseconds
+  button3.setDebounceTime(50); // set debounce time to 50 milliseconds
+  
   pinMode(led0, OUTPUT);
-  pinMode(BTN_1_PIN, INPUT);
   pinMode(led1, OUTPUT);
-  pinMode(BTN_2_PIN, INPUT);
   pinMode(led2, OUTPUT);
-  pinMode(BTN_3_PIN, INPUT);
   pinMode(led3, OUTPUT);
-  pinMode(ledT, OUTPUT);
-
-  //subscribe to needed events
-  _ezb.Subscribe(BTN_0, Btn0Pressed, PRESSED);
-  _ezb.Subscribe(BTN_0, Btn0Released, RELEASED);
-  _ezb.Subscribe(BTN_0, Btn0Released, HOLD_RELEASED);
-  _ezb.Subscribe(BTN_1, Btn1Pressed, PRESSED);
-  _ezb.Subscribe(BTN_1, Btn1Released, RELEASED);
-  _ezb.Subscribe(BTN_1, Btn1Released, HOLD_RELEASED);
-  _ezb.Subscribe(BTN_2, Btn2Pressed, PRESSED);
-  _ezb.Subscribe(BTN_2, Btn2Released, RELEASED);
-  _ezb.Subscribe(BTN_2, Btn2Released, HOLD_RELEASED);
-  _ezb.Subscribe(BTN_3, Btn3Pressed, PRESSED);
-  _ezb.Subscribe(BTN_3, Btn3Released, RELEASED);
-  _ezb.Subscribe(BTN_3, Btn3Released, HOLD_RELEASED);
+  nButton = 0;
+  contador = 0;
 }
 
 void loop() {
-  //EZButton loop
-  _ezb.Loop(); 
-}
+  unsigned long currentTime = millis();
+  button0.loop(); // MUST call the loop() function first
+  button1.loop(); // MUST call the loop() function first
+  button2.loop(); // MUST call the loop() function first
+  button3.loop(); // MUST call the loop() function first
 
-void Btn0Pressed() {
-  digitalWrite(led0, HIGH);
-  buttonState0 = true;
-}
+  int btn0State = button0.getState();
+  int btn1State = button1.getState();
+  int btn2State = button2.getState();
+  int btn3State = button3.getState();
 
-void Btn0Released() {
-  if (buttonState0 && !buttonState1 && !buttonState2 && !buttonState3) {
-    turnOffAllLeds();
-   digitalWrite(led0, HIGH); 
+  if(button0.isPressed()) {
+    minusButton();
+    checkSpaces(0);
   }
-  else {
-    digitalWrite(led0, LOW); 
+
+  if(button0.isReleased()) {
+    buttons[nPressed] = 0;
+    plusButton();
+    checkListButtons();
   }
-  buttonState0 = false;
+  
+  if(button1.isPressed()) {
+    minusButton();
+    checkSpaces(1);
+  }
+
+  if(button1.isReleased()) {
+    buttons[nPressed] = 1;
+    plusButton();
+    checkListButtons();
+  }
+
+  if(button2.isPressed()){
+    minusButton();
+    checkSpaces(2);
+  }
+
+  if(button2.isReleased()) {
+    buttons[nPressed] = 2;
+    plusButton();
+    checkListButtons();
+  }
+
+  if(button3.isPressed()) {
+    minusButton();
+    checkSpaces(3);
+  }
+
+  if(button3.isReleased()){
+    buttons[nPressed] = 3;
+    plusButton();
+    checkListButtons();
+  }
 }
 
-void Btn1Pressed() {
-  digitalWrite(led1, HIGH);
-  buttonState1 = true;
+void plusButton() {
+  offLeds();
+  onLed(buttons[nPressed]);
+  Serial.print("Encender Led: ");
+  Serial.println(buttons[nPressed]);
+  nPressed = nPressed + 1;
+  Serial.println(nPressed);
 }
 
-void Btn1Released() {
-  if (!buttonState0 && buttonState1 && !buttonState2 && !buttonState3) {
-    turnOffAllLeds();
-   digitalWrite(led1, HIGH); 
+void minusButton() {
+  nPressed = nPressed - 1;
+  if(nPressed <= 0) {
+    nPressed = 0;
   }
-  else {
-    digitalWrite(led1, LOW); 
-  }
-  buttonState1 = false;
+  Serial.println(nPressed);
 }
 
-void Btn2Pressed() {
-  digitalWrite(led2, HIGH);
-  buttonState2 = true;
+void checkSpaces(int n) {
+  for (int i = 0; i < 4; i++) {
+    if(n == buttons[i]) {
+      buttons[i] = 4;
+    }
+  }
+  if (nPressed >= 0) {
+    for (int i = 0; i < 4; i++) {
+      if(buttons[i] == 4) {
+        for (int j = i; j < 4; j++) {
+          if (buttons[j] < 4) {
+            buttons[i] = buttons[j];
+            buttons[j] = 4;
+          }
+        }
+      }
+    }
+    if (nPressed == 0) {
+      lastButton = n;
+    }
+    else {
+      lastButton = buttons[nPressed - 1];
+    }
+    offLeds();
+    onLed(lastButton);
+    Serial.print("Mantener Led: ");
+    Serial.println(lastButton);
+  }
+  checkListButtons();
 }
 
-void Btn2Released() {
-  if (!buttonState0 && !buttonState1 && buttonState2 && !buttonState3) {
-    turnOffAllLeds();
-   digitalWrite(led2, HIGH); 
+void checkListButtons() {
+  for(int i=0; i < 4; i++) {
+    Serial.print(buttons[i]);
+    Serial.print(",");
   }
-  else {
-    digitalWrite(led2, LOW); 
-  }
-  buttonState2 = false;
+  Serial.println();
 }
 
-void Btn3Pressed() {
-  digitalWrite(led3, HIGH);
-  buttonState3 = true;
-}
-
-void Btn3Released() {
-  if (!buttonState0 && !buttonState1 && !buttonState2 && buttonState3) {
-    turnOffAllLeds();
-   digitalWrite(led3, HIGH); 
+void onLed(int n) {
+  if (n == 0) {
+    digitalWrite(led0, HIGH);
   }
-  else {
-    digitalWrite(led3, LOW); 
+  else if (n == 1) {
+    digitalWrite(led1, HIGH);
   }
-  buttonState3 = false;
-}
+  else if (n == 2) {
+    digitalWrite(led2, HIGH);
+  }
+  else if (n == 3) {
+    digitalWrite(led3, HIGH);
+  }
+} 
 
-void turnOffAllLeds() {
-   digitalWrite(led0, LOW);
-   digitalWrite(led1, LOW);
-   digitalWrite(led2, LOW);
-   digitalWrite(led3, LOW);
+void offLeds() {
+  digitalWrite(led0, LOW);
+  digitalWrite(led1, LOW);
+  digitalWrite(led2, LOW);
+  digitalWrite(led3, LOW);
 }
